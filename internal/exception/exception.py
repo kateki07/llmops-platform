@@ -16,6 +16,10 @@ class CustomException(Exception):
     message: str = ""
     data: Any = field(default_factory=dict)
 
+    def __init__(self, message: str = None, data: any = None):
+        super().__init__()
+        self.message = message
+        self.data = data
 
 @dataclass
 class FailException(CustomException):

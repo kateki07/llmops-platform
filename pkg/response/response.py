@@ -61,4 +61,4 @@ def validate_error_json(errors: dict = None):
     """参数校验失败时，把第一条错误信息返回给前端"""
     first_key = next(iter(errors)) if errors else None
     msg = errors[first_key][0] if first_key is not None else ""
-    return message(code=HttpCode.VALIDATE_ERROR, msg=msg)
+    return json(Response(code=HttpCode.VALIDATE_ERROR, message=msg, data=errors))
