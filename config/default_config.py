@@ -13,6 +13,10 @@ DEFAULT_CONFIG = {
 
     # 是否在控制台打印执行的 SQL 语句
     "SQLALCHEMY_ECHO": "True",
+
+    # 数据库连接池
+    "SQLALCHEMY_POOL_SIZE": 30,
+    "SQLALCHEMY_POOL_RECYCLE": 3600,
 }
 
 

@@ -15,6 +15,12 @@ class Config:
         # 数据库连接串
         self.SQLALCHEMY_DATABASE_URI = get_env("SQLALCHEMY_DATABASE_URI")
 
+        # 数据库连接池
+        self.SQLALCHEMY_ENGINE_OPTIONS = {
+            "pool_size": int(get_env("SQLALCHEMY_POOL_SIZE")),
+            "pool_recycle": int(get_env("SQLALCHEMY_POOL_RECYCLE")),
+        }
+
         # 是否在控制台打印 SQL，调试时很有用
         self.SQLALCHEMY_ECHO = get_bool_env("SQLALCHEMY_ECHO")
 
