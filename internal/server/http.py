@@ -2,7 +2,7 @@ import os
 
 from flask import Flask
 from flask_migrate import Migrate
-from flask_sqlalchemy import SQLAlchemy
+from pkg.sqlalchemy import SQLAlchemy
 
 from config import Config
 from internal.exception import CustomException
@@ -38,11 +38,7 @@ class Http(Flask):
         migrate.init_app(self, db, directory="internal/migration")
         with self.app_context():
             _ = App()
-            # 注意：这一行和 flask db migrate 是冲突的。
-            # create_all() 会在应用启动时直接把表建好，等 alembic 来对比时
-            # 发现「模型和数据库一模一样」，就生成不出迁移文件了。
-            # 用迁移来管理表结构时，这行必须关掉。
-            # db.create_all()
+            db.create_all()         
 
         # 5.注册应用路由
         router.register_router(self)
