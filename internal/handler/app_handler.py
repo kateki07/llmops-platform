@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 import uuid
 
 from injector import inject
@@ -6,6 +7,9 @@ from openai import OpenAI
 from internal.schema.app_schema import CompletionReq
 from pkg.response import success_json, validate_error_json, success_message
 from internal.service import AppService
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI, OpenAI
+from langchain_core.output_parsers import StrOutputParser
 
 import os
 
@@ -38,20 +42,17 @@ class AppHandler:
         req = CompletionReq()
         if not req.validate():
             return validate_error_json(req.errors)
-        
-        # 2.构建OpenAI客户端，并发起请求
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        # 3.得到请求响应，然后将OpenAI的响应传递给前端
-        completion = client.chat.completions.create(        
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是OpenAI开发的聊天机器人，请根据用户的输入回复对应的信息"},
-                {"role": "user", "content": req.query.data},
-            ]
-        )
 
-        content = completion.choices[0].message.content
+        # 2.构建组件
+        prompt = ChatPromptTemplate.from_template("{query}")
+        llm = ChatOpenAI(model="gpt-3.5-turbo-16k")
+        parser = StrOutputParser()
 
+        # 3.构建链
+        chain = prompt | llm | parser
+
+        # 4.调用链得到结果
+        content = chain.invoke({"query": req.query.data})
         return success_json({"content": content})
     
     def ping(self):
