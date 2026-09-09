@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field, asdict
 from typing import Any
-
 from flask import jsonify
-
 from .http_code import HttpCode
 
 
@@ -19,6 +17,7 @@ class Response:
 
 def json(data: Response = None):
     """把 Response 转成 Flask 能发出去的 JSON 响应"""
+    # 跨域响应头由 Http 里的 after_request 钩子统一添加，这里只管序列化
     return jsonify(asdict(data)), 200
 
 

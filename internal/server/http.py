@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask
+from flask_cors import CORS
 from flask_migrate import Migrate
 from pkg.sqlalchemy import SQLAlchemy
 
@@ -36,11 +37,27 @@ class Http(Flask):
         # 4.初始化flask扩展
         db.init_app(self)
         migrate.init_app(self, db, directory="internal/migration")
-        with self.app_context():
-            _ = App()
-            db.create_all()         
 
-        # 5.注册应用路由
+        # 5.解决
+        CORS(self, resources={
+            r"/*":{
+                "origins": "*",
+                "supports_credentials": True,
+                #"methods": ["GET","POST"],
+                #"allow_headers":["Content-Type"],
+            }
+        })
+
+        # 5.给所有响应加跨域头（包括 Flask 自动回的 OPTIONS 预检请求）
+        @self.after_request
+        def _add_cors_headers(response):
+            response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            response.headers['Access-Control-Allow-Methods'] = 'GET,POST'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            return response
+
+        # 6.注册应用路由
         router.register_router(self)
 
     def _register_error_handler(self, error: Exception):
