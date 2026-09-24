@@ -6,3 +6,34 @@ injector==0.24.0
 psycopg2-binary==2.9.12
 python-dotenv==1.2.3
 SQLAlchemy==2.0.52
+
+# --- LangChain（第2~4周，版本锁死，别升）---
+langchain==0.2.1
+langchain-community==0.2.1
+langchain-core==0.2.43
+langchain-openai==0.1.25
+langchain-text-splitters==0.2.4
+langsmith==0.1.147
+openai==1.109.1
+tiktoken==0.14.0
+
+# --- 第5周 RAG：主线必须（跑 debug 接口要用）---
+weaviate-client==4.6.5
+langchain-weaviate==0.0.2
+
+# --- 第5周 RAG：study 示例用，29 讲之后几乎每讲都要 ---
+unstructured==0.27.6
+python-pptx
+python-docx
+openpyxl
+Markdown
+faiss-cpu==1.8.0
+
+# --- 第5周 RAG：按需装，不装不影响主程序 ---
+# pinecone-client==4.1.1        # 24 讲 Pinecone
+# tcvectordb==1.3.2             # 25 讲 腾讯云向量库
+# beautifulsoup4==4.12.3        # 29 讲 URL 网页加载器
+# sentence-transformers==3.0.1  # 22 讲 HuggingFace 本地嵌入模型
+# qianfan==0.4.2                # 22 讲 百度千帆嵌入
+# rank_bm25==0.2.2              # 45 讲 混合检索里的 BM25
+# langchain-cohere==0.1.9       # 52 讲 Cohere ReRank

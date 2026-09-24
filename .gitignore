@@ -6,3 +6,9 @@ __pycache__/
 storage/
 .idea/
 .vscode/
+
+# 第5周 study 里跑示例时生成的本地缓存/索引，不入库
+study/**/cache/
+study/**/vector-store/
+study/**/multy-vector/
+study/**/parent-document/
