@@ -8,6 +8,7 @@ from pkg.sqlalchemy import SQLAlchemy
 from config import Config
 from internal.exception import CustomException
 from internal.model import App
+from internal.extension import logging_extension, redis_extension, celery_extension
 from internal.router import Router
 from pkg.response import json, Response, HttpCode
 
@@ -38,6 +39,10 @@ class Http(Flask):
         db.init_app(self)
         migrate.init_app(self, db, directory="internal/migration")
 
+        # W7 新增的三个扩展
+        redis_extension.init_app(self)      # Redis 连接池
+        celery_extension.init_app(self)     # 异步任务队列
+        logging_extension.init_app(self)    # 日志
         # 5.解决
         CORS(self, resources={
             r"/*":{

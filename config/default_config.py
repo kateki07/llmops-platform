@@ -17,6 +17,22 @@ DEFAULT_CONFIG = {
     # 数据库连接池
     "SQLALCHEMY_POOL_SIZE": 30,
     "SQLALCHEMY_POOL_RECYCLE": 3600,
+
+    # Redis（W7 起用到：Celery 的队列和结果存储都放在 Redis 里）
+    "REDIS_HOST": "localhost",
+    "REDIS_PORT": 6379,
+    "REDIS_USERNAME": "",
+    "REDIS_PASSWORD": "",
+    "REDIS_DB": 0,
+    "REDIS_USE_SSL": "False",
+
+    # Celery 异步任务
+    # broker = 任务队列，backend = 结果存放处，用 Redis 的不同 db 编号区分
+    "CELERY_BROKER_DB": 1,
+    "CELERY_RESULT_BACKEND_DB": 1,
+    "CELERY_TASK_IGNORE_RESULT": "False",
+    "CELERY_RESULT_EXPIRES": 3600,
+    "CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP": "True",
 }
 
 

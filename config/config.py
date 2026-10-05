@@ -26,3 +26,20 @@ class Config:
 
         # 关掉一个已废弃的追踪功能，能省一点内存
         self.SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+        # Redis 连接
+        self.REDIS_HOST = get_env("REDIS_HOST")
+        self.REDIS_PORT = get_env("REDIS_PORT")
+        self.REDIS_USERNAME = get_env("REDIS_USERNAME")
+        self.REDIS_PASSWORD = get_env("REDIS_PASSWORD")
+        self.REDIS_DB = get_env("REDIS_DB")
+        self.REDIS_USE_SSL = get_bool_env("REDIS_USE_SSL")
+
+        # Celery 异步任务配置（Flask 3 用小写 key，会被 Celery 自动读走）
+        self.CELERY = {
+            "broker_url": f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{int(get_env('CELERY_BROKER_DB'))}",
+            "result_backend": f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{int(get_env('CELERY_RESULT_BACKEND_DB'))}",
+            "task_ignore_result": get_bool_env("CELERY_TASK_IGNORE_RESULT"),
+            "result_expires": int(get_env("CELERY_RESULT_EXPIRES")),
+            "broker_connection_retry_on_startup": get_bool_env("CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP"),
+        }

@@ -25,5 +25,9 @@ app = Http(
     migrate=injector.get(Migrate),
     router=injector.get(Router))
 
+# Celery 的实例挂在 Flask 的 extensions 里，
+# 启动 worker 时用 `celery -A app.http.app.celery worker` 指向它
+celery = app.extensions["celery"]
+
 if __name__ == "__main__":
     app.run(debug=True)

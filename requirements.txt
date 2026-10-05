@@ -37,3 +37,10 @@ faiss-cpu==1.8.0
 # qianfan==0.4.2                # 22 讲 百度千帆嵌入
 # rank_bm25==0.2.2              # 45 讲 混合检索里的 BM25
 # langchain-cohere==0.1.9       # 52 讲 Cohere ReRank
+
+# --- 第7周 插件与知识库模块：主线必须 ---
+celery
+redis
+jieba                       # 中文分词，BM25 关键词检索用
+cos-python-sdk-v5           # 腾讯云 COS（导入名是 qcloud_cos）
+langchain-huggingface       # 本地嵌入模型
