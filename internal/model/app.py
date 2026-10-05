@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     PrimaryKeyConstraint,
     Index,
+    text,
 )
 
 from internal.extension.database_extension import db
@@ -54,3 +55,28 @@ class App(db.Model):
 
     # 创建时间：只在新增时填，之后不再变
     created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+
+class AppDatasetJoin(db.Model):
+    """应用与知识库的关联表
+
+    一个应用可以挂多个知识库，一个知识库也能被多个应用使用，
+    所以用一张中间表来存这个多对多关系（W7 知识库模块开始用到）。
+    """
+
+    __tablename__ = "app_dataset_join"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_app_dataset_join_id"),
+    )
+
+    id = Column(UUID, nullable=False, server_default=text("uuid_generate_v4()"))
+    app_id = Column(UUID, nullable=False)
+    dataset_id = Column(UUID, nullable=False)
+
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP(0)"),
+        server_onupdate=text("CURRENT_TIMESTAMP(0)"),
+    )
+    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP(0)"))
