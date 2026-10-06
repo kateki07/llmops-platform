@@ -43,4 +43,11 @@ celery
 redis
 jieba                       # 中文分词，BM25 关键词检索用
 cos-python-sdk-v5           # 腾讯云 COS（导入名是 qcloud_cos）
-langchain-huggingface       # 本地嵌入模型
+# langchain-huggingface     # 别装！它会把 langchain-core 升到 1.x，
+#                           # 0.2 的 langchain_core.pydantic_v1 在 1.x 里被删了，
+#                           # 整个项目会起不来。嵌入模型已改用 OpenAIEmbeddings。
+
+# --- 第8周 Agent 与流式响应：主线必须 ---
+langgraph==0.2.8            # Agent 的状态图（StateGraph），版本要配 langchain-core 0.2.x
+langgraph-checkpoint==1.0.3
+Flask-Cors==4.0.1           # SSE 流式响应跨域，老师这周把手写的 after_request 换成了它
