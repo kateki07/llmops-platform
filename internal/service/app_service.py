@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from injector import inject
 
-from internal.model import App
+from internal.model import App, Account
 from pkg.sqlalchemy import SQLAlchemy
 
 
@@ -13,10 +13,10 @@ class AppService:
     """应用服务逻辑"""
     db: SQLAlchemy
 
-    def create_app(self) -> App:
+    def create_app(self, account: Account) -> App:
         with self.db.auto_commit():
             # 1.创建模型的实体类
-            app = App(name="测试机器人", account_id=uuid.uuid4(), icon="", description="这是一个简单的聊天机器人")
+            app = App(name="测试机器人", account_id=account.id, icon="", description="这是一个简单的聊天机器人")
             # 2.将实体类添加到session会话中
             self.db.session.add(app)
         return app

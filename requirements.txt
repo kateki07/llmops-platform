@@ -51,3 +51,7 @@ cos-python-sdk-v5           # 腾讯云 COS（导入名是 qcloud_cos）
 langgraph==0.2.8            # Agent 的状态图（StateGraph），版本要配 langchain-core 0.2.x
 langgraph-checkpoint==1.0.3
 Flask-Cors==4.0.1           # SSE 流式响应跨域，老师这周把手写的 after_request 换成了它
+
+# --- 第9周 授权认证：主线必须 ---
+PyJWT==2.9.0                # JWT 签发与校验（导入名是 jwt，不是 pyjwt）
+Flask-Login==0.6.3          # 登录态管理，老师的 requirements 漏了这个但代码在用

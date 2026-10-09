@@ -13,9 +13,8 @@ class ListField(Field):
         return self.data if self.data else []
 
 
-# 新增:字典字段
 class DictField(Field):
-    """自定义dict字段"""
+    """自定义字典字段"""
     data: dict = None
 
     def process_formdata(self, valuelist):
