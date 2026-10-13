@@ -1,8 +1,12 @@
-from langchain_core.language_models import BaseLanguageModel
+from uuid import UUID
+
 from langchain_core.messages import AnyMessage
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.tools import BaseTool
 from langgraph.graph import MessagesState
+
+from internal.entity.app_entity import DEFAULT_APP_CONFIG
+from internal.entity.conversation_entity import InvokeFrom
 
 # Agent智能体系统预设提示词模板
 AGENT_SYSTEM_PROMPT_TEMPLATE = """你是一个高度定制的智能体应用，旨在为用户提供准确、专业的内容生成和问题解答，请严格遵守以下规则：
@@ -34,8 +38,12 @@ AGENT_SYSTEM_PROMPT_TEMPLATE = """你是一个高度定制的智能体应用，�
 
 class AgentConfig(BaseModel):
     """智能体配置信息，涵盖：LLM大语言模型、预设prompt、关联插件、知识库、工作流、是否开启长期记忆等内容，后期可以随时扩展"""
-    # 智能体使用的LLM
-    llm: BaseLanguageModel
+    # 代表用户的唯一标识及调用来源，默认来源是WEB_APP
+    user_id: UUID
+    invoke_from: InvokeFrom = InvokeFrom.WEB_APP
+
+    # 最大迭代次数
+    max_iteration_count: int = 5
 
     # 智能体预设提示词
     system_prompt: str = AGENT_SYSTEM_PROMPT_TEMPLATE
@@ -47,8 +55,20 @@ class AgentConfig(BaseModel):
     # 智能体使用的工具列表
     tools: list[BaseTool] = Field(default_factory=list)
 
+    # 审核配置
+    review_config: dict = Field(default_factory=lambda: DEFAULT_APP_CONFIG["review_config"])
+
 
 class AgentState(MessagesState):
     """智能体状态类"""
+    task_id: UUID  # 该次状态对应的任务id，每次运行时会使用独立的任务id
+    iteration_count: int  # 迭代次数，默认为0
     history: list[AnyMessage]  # 短期记忆(历史记录)
     long_term_memory: str  # 长期记忆
+
+
+# 知识库检索工具名称
+DATASET_RETRIEVAL_TOOL_NAME = "dataset_retrieval"
+
+# Agent超过最大迭代次数时提示内容
+MAX_ITERATION_RESPONSE = "当前Agent迭代次数已超过限制，请重试"
