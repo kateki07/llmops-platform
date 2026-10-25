@@ -103,7 +103,7 @@ tool_message = ToolMessage(
     # 告诉大语言模型工具调用id，这里的工具调用id是让大语言模型知道这条消息是和哪个函数关联
     tool_call_id=graph_state[0]["messages"][-2].tool_calls[0]["id"],
     name=graph_state[0]["messages"][-2].tool_calls[0]["name"],
-    content="2024年北京半程马拉松的第一名为慕小课01:59:40，第二名为慕二课成绩为02:04:16，第三名为慕三课02:15:17"
+    content="2024年北京半程马拉松的第一名为小王01:59:40，第二名为慕二课成绩为02:04:16，第三名为慕三课02:15:17"
 )
 print("下一个步骤:", graph_state[1])
 graph.update_state(config, {"messages": [tool_message]})

@@ -15,11 +15,11 @@ memory_variable = memory.load_memory_variables({})
 print("第一次:", memory_variable)
 
 # ② 假设这里调用了链，得到了回复
-# content = chain.invoke({"query": "你好，我是慕小课你是谁", "chat_history": memory_variable.get("history")})
+# content = chain.invoke({"query": "你好，我是小王你是谁", "chat_history": memory_variable.get("history")})
 
 # ③ 把这一轮对话存回记忆
 memory.save_context(
-    {"query": "你好，我是慕小课你是谁"},
+    {"query": "你好，我是小王你是谁"},
     {"output": "你好，我是ChatGPT，有什么可以帮到您的"},
 )
 

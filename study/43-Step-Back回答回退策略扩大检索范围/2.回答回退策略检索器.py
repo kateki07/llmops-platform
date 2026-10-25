@@ -29,7 +29,7 @@ class StepBackRetriever(BaseRetriever):
         # 1.构建少量示例提示模板
         examples = [
             {"input": "慕课网上有关于AI应用开发的课程吗？", "output": "慕课网上有哪些课程？"},
-            {"input": "慕小课出生在哪个国家？", "output": "慕小课的人生经历是什么样的？"},
+            {"input": "小王出生在哪个国家？", "output": "小王的人生经历是什么样的？"},
             {"input": "司机可以开快车吗？", "output": "司机可以做什么？"},
         ]
         example_prompt = ChatPromptTemplate.from_messages([

@@ -11,7 +11,7 @@ dotenv.load_dotenv()
 def retrieval(query: str) -> str:
     """一个模拟的检索器函数"""
     print("正在检索:", query)
-    return "我是慕小课"
+    return "我是小王"
 
 
 # 1.编排prompt

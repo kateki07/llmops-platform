@@ -36,4 +36,4 @@ graph_builder.add_edge("llm", END)
 graph = graph_builder.compile()
 
 # 5.调用图架构应用
-print(graph.invoke({"messages": [("human", "你好，你是谁，我叫慕小课，我喜欢打篮球游泳")], "use_name": "graph"}))
+print(graph.invoke({"messages": [("human", "你好，你是谁，我叫小王，我喜欢打篮球游泳")], "use_name": "graph"}))

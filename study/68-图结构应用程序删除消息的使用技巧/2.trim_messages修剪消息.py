@@ -6,12 +6,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 dotenv.load_dotenv()
 
 messages = [
-    HumanMessage(content="你好，我叫慕小课，我喜欢游泳打篮球，你喜欢什么呢？"),
+    HumanMessage(content="你好，我叫小王，我喜欢游泳打篮球，你喜欢什么呢？"),
     AIMessage([
-        {"type": "text", "text": "你好，慕小课！我对很多话题感兴趣，比如探索新知识和帮助解决问题。你最喜欢游泳还是篮球呢？"},
+        {"type": "text", "text": "你好，小王！我对很多话题感兴趣，比如探索新知识和帮助解决问题。你最喜欢游泳还是篮球呢？"},
         {
             "type": "text",
-            "text": "你好，慕小课！我喜欢探讨各种话题和帮助解答问题。你对游泳和篮球的兴趣很广泛，有没有特别喜欢的运动方式或运动员呢？"
+            "text": "你好，小王！我喜欢探讨各种话题和帮助解答问题。你对游泳和篮球的兴趣很广泛，有没有特别喜欢的运动方式或运动员呢？"
         },
     ]),
     HumanMessage(content="如果我想学习关于天体物理方面的知识，你能给我一些建议么？"),

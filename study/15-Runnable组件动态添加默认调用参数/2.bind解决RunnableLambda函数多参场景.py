@@ -11,7 +11,7 @@ def get_weather(location: str, unit: str, name: str) -> str:
     return f"{location}天气为{random.randint(24, 40)}{unit}"
 
 
-get_weather_runnable = RunnableLambda(get_weather).bind(unit="摄氏度", name="慕小课")
+get_weather_runnable = RunnableLambda(get_weather).bind(unit="摄氏度", name="小王")
 
 resp = get_weather_runnable.invoke("广州")
 

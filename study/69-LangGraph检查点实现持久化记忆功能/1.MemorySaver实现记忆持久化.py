@@ -47,7 +47,7 @@ agent = create_react_agent(model=model, tools=tools, checkpointer=checkpointer)
 
 # 4.调用智能体并输出内容
 print(agent.invoke(
-    {"messages": [("human", "你好，我叫慕小课，我喜欢游泳打球，你喜欢什么呢?")]},
+    {"messages": [("human", "你好，我叫小王，我喜欢游泳打球，你喜欢什么呢?")]},
     config=config,
 ))
 

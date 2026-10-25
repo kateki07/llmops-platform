@@ -15,3 +15,6 @@ study/**/parent-document/
 
 # HuggingFace 模型缓存（运行时自动下载，不入库）
 internal/core/embeddings/models--*/
+
+# pytest 缓存（pytest.ini 里把 cache_dir 指到了这里）
+tmp/
