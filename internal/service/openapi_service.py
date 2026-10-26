@@ -120,6 +120,13 @@ class OpenAPIService(BaseService):
             )
             tools.append(dataset_retrieval)
 
+        # 14.检测是否关联工作流，如果关联了工作流则将工作流构建成工具添加到tools中
+        if app_config["workflows"]:
+            workflow_tools = self.app_config_service.get_langchain_tools_by_workflow_ids(
+                [workflow["id"] for workflow in app_config["workflows"]]
+            )
+            tools.extend(workflow_tools)
+
         # 14.根据LLM是否支持tool_call决定使用不同的Agent
         agent_class = FunctionCallAgent if ModelFeature.TOOL_CALL in llm.features else ReACTAgent
         agent = agent_class(
@@ -181,7 +188,7 @@ class OpenAPIService(BaseService):
                     # 这里必须用 .value。QueueEvent 是 (str, Enum)，而 Python 3.12 改了 Enum.__format__：
                     # 同一行 f"{agent_thought.event}" 在 3.10/3.11 得到 "agent_message"，
                     # 在 3.12 得到 "QueueEvent.AGENT_MESSAGE"。前端比较的是 "agent_message"，
-                    # 对不上就会让每个 token 都走进「其他事件」分支，currentMessage.answer 永远是空串，
+                    # 对不上就会让每个 token 都走进「其他事件」分支，answer 永远是空串，
                     # 表现为气泡一直空着、等整段生成完才从数据库读回来 —— 打字机效果整个失效。
                     yield f"event: {agent_thought.event.value}\ndata:{json.dumps(data)}\n\n"
 

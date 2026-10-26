@@ -21,6 +21,9 @@ from internal.handler import (
     WorkflowHandler,
     LanguageModelHandler,
     AssistantAgentHandler,
+    AnalysisHandler,
+    WebAppHandler,
+    ConversationHandler,
 )
 
 
@@ -45,6 +48,9 @@ class Router:
     workflow_handler: WorkflowHandler
     language_model_handler: LanguageModelHandler
     assistant_agent_handler: AssistantAgentHandler
+    analysis_handler: AnalysisHandler
+    web_app_handler: WebAppHandler
+    conversation_handler: ConversationHandler
 
     def register_router(self, app: Flask):
         """注册路由"""
@@ -112,6 +118,15 @@ class Router:
         bp.add_url_rule(
             "/apps/<uuid:app_id>/conversations/messages",
             view_func=self.app_handler.get_debug_conversation_messages_with_page,
+        )
+        bp.add_url_rule(
+            "/apps/<uuid:app_id>/published-config",
+            view_func=self.app_handler.get_published_config,
+        )
+        bp.add_url_rule(
+            "/apps/<uuid:app_id>/published-config/regenerate-web-app-token",
+            methods=["POST"],
+            view_func=self.app_handler.regenerate_web_app_token,
         )
 
         # 3.内置插件广场模块
@@ -387,6 +402,56 @@ class Router:
             view_func=self.assistant_agent_handler.delete_assistant_agent_conversation,
         )
 
-        # 14.在应用上注册蓝图
+        # 14.应用统计模块
+        bp.add_url_rule(
+            "/analysis/<uuid:app_id>",
+            view_func=self.analysis_handler.get_app_analysis,
+        )
+
+        # 15.WebApp模块
+        bp.add_url_rule("/web-apps/<string:token>", view_func=self.web_app_handler.get_web_app)
+        bp.add_url_rule(
+            "/web-apps/<string:token>/chat",
+            methods=["POST"],
+            view_func=self.web_app_handler.web_app_chat,
+        )
+        bp.add_url_rule(
+            "/web-apps/<string:token>/chat/<uuid:task_id>/stop",
+            methods=["POST"],
+            view_func=self.web_app_handler.stop_web_app_chat,
+        )
+        bp.add_url_rule("/web-apps/<string:token>/conversations", view_func=self.web_app_handler.get_conversations)
+
+        # 16.会话模块
+        bp.add_url_rule(
+            "/conversations/<uuid:conversation_id>/messages",
+            view_func=self.conversation_handler.get_conversation_messages_with_page,
+        )
+        bp.add_url_rule(
+            "/conversations/<uuid:conversation_id>/delete",
+            methods=["POST"],
+            view_func=self.conversation_handler.delete_conversation,
+        )
+        bp.add_url_rule(
+            "/conversations/<uuid:conversation_id>/messages/<uuid:message_id>/delete",
+            methods=["POST"],
+            view_func=self.conversation_handler.delete_message,
+        )
+        bp.add_url_rule(
+            "/conversations/<uuid:conversation_id>/name",
+            view_func=self.conversation_handler.get_conversation_name,
+        )
+        bp.add_url_rule(
+            "/conversations/<uuid:conversation_id>/name",
+            methods=["POST"],
+            view_func=self.conversation_handler.update_conversation_name,
+        )
+        bp.add_url_rule(
+            "/conversations/<uuid:conversation_id>/is-pinned",
+            methods=["POST"],
+            view_func=self.conversation_handler.update_conversation_is_pinned,
+        )
+
+        # 17.在应用上注册蓝图
         app.register_blueprint(bp)
         app.register_blueprint(openapi_bp)

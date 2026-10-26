@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -8,18 +9,22 @@ from injector import inject
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from sqlalchemy import desc
 
+from internal.core.agent.entities.queue_entity import AgentThought, QueueEvent
 from internal.entity.conversation_entity import (
     SUMMARIZER_TEMPLATE,
     CONVERSATION_NAME_TEMPLATE,
     ConversationInfo,
     SUGGESTED_QUESTIONS_TEMPLATE,
-    SuggestedQuestions, InvokeFrom,
+    SuggestedQuestions, InvokeFrom, MessageStatus,
 )
+from internal.exception import NotFoundException
+from internal.model import Conversation, Message, MessageAgentThought, Account
+from internal.schema.conversation_schema import GetConversationMessagesWithPageReq
+from pkg.paginator import Paginator
 from pkg.sqlalchemy import SQLAlchemy
 from .base_service import BaseService
-from ..core.agent.entities.queue_entity import AgentThought, QueueEvent
-from ..model import Conversation, Message, MessageAgentThought
 
 
 @inject
@@ -163,8 +168,19 @@ class ConversationService(BaseService):
                         observation=agent_thought.observation,
                         tool=agent_thought.tool,
                         tool_input=agent_thought.tool_input,
+                        # 消息相关数据
                         message=agent_thought.message,
+                        message_token_count=agent_thought.message_token_count,
+                        message_unit_price=agent_thought.message_unit_price,
+                        message_price_unit=agent_thought.message_price_unit,
+                        # 答案相关字段
                         answer=agent_thought.answer,
+                        answer_token_count=agent_thought.answer_token_count,
+                        answer_unit_price=agent_thought.answer_unit_price,
+                        answer_price_unit=agent_thought.answer_price_unit,
+                        # Agent推理统计相关
+                        total_token_count=agent_thought.total_token_count,
+                        total_price=agent_thought.total_price,
                         latency=agent_thought.latency,
                     )
 
@@ -173,8 +189,19 @@ class ConversationService(BaseService):
                     # 8.更新消息信息
                     self.update(
                         message,
+                        # 消息相关字段
                         message=agent_thought.message,
+                        message_token_count=agent_thought.message_token_count,
+                        message_unit_price=agent_thought.message_unit_price,
+                        message_price_unit=agent_thought.message_price_unit,
+                        # 答案相关字段
                         answer=agent_thought.answer,
+                        answer_token_count=agent_thought.answer_token_count,
+                        answer_unit_price=agent_thought.answer_unit_price,
+                        answer_price_unit=agent_thought.answer_price_unit,
+                        # Agent推理统计相关
+                        total_token_count=agent_thought.total_token_count,
+                        total_price=agent_thought.total_price,
                         latency=latency,
                     )
 
@@ -206,3 +233,99 @@ class ConversationService(BaseService):
                         error=agent_thought.observation,
                     )
                     break
+
+    def get_conversation(self, conversation_id: UUID, account: Account) -> Conversation:
+        """根据传递的会话id+account，获取指定的会话信息"""
+        # 1.根据conversation_id查询会话记录
+        conversation = self.get(Conversation, conversation_id)
+        if (
+                not conversation
+                or conversation.created_by != account.id
+                or conversation.is_deleted
+        ):
+            raise NotFoundException("该会话不存在或被删除，请核实后重试")
+
+        # 2.校验通过返回会话
+        return conversation
+
+    def get_message(self, message_id: UUID, account: Account) -> Message:
+        """根据传递的消息id+账号，获取指定的消息"""
+        # 1.根据message_id查询消息记录
+        message = self.get(Message, message_id)
+        if (
+                not message
+                or message.created_by != account.id
+                or message.is_deleted
+        ):
+            raise NotFoundException("该消息不存在或被删除，请核实后重试")
+
+        # 2.校验通过返回消息
+        return message
+
+    def get_conversation_messages_with_page(
+            self,
+            conversation_id: UUID,
+            req: GetConversationMessagesWithPageReq,
+            account: Account,
+    ) -> tuple[list[Message], Paginator]:
+        """根据传递的会话id+请求数据，获取当前账号下该会话的消息分页列表数据"""
+        # 1.获取会话并校验权限
+        conversation = self.get_conversation(conversation_id, account)
+
+        # 2.构建分页器并设置游标条件
+        paginator = Paginator(db=self.db, req=req)
+        filters = []
+        if req.created_at.data:
+            # 3.将时间戳转换成DateTime
+            created_at_datetime = datetime.fromtimestamp(req.created_at.data)
+            filters.append(Message.created_at <= created_at_datetime)
+
+        # 4.执行分页并查询数据
+        messages = paginator.paginate(
+            self.db.session.query(Message).filter(
+                Message.conversation_id == conversation.id,
+                Message.status.in_([MessageStatus.STOP, MessageStatus.NORMAL]),
+                Message.answer != "",
+                ~Message.is_deleted,
+                *filters,
+            ).order_by(desc("created_at"))
+        )
+
+        return messages, paginator
+
+    def delete_conversation(self, conversation_id: UUID, account: Account) -> Conversation:
+        """根据传递的会话id+账号删除指定的会话记录"""
+        # 1.获取会话记录并校验权限
+        conversation = self.get_conversation(conversation_id, account)
+
+        # 2.更新会话的删除状态
+        self.update(conversation, is_deleted=True)
+
+        return conversation
+
+    def delete_message(self, conversation_id: UUID, message_id: UUID, account: Account) -> Message:
+        """根据传递的会话id+消息id删除指定的消息记录"""
+        # 1.获取会话记录并校验权限
+        conversation = self.get_conversation(conversation_id, account)
+
+        # 2.获取消息并校验权限
+        message = self.get_message(message_id, account)
+
+        # 3.判断消息和会话是否关联
+        if conversation.id != message.conversation_id:
+            raise NotFoundException("该会话下不存在该消息，请核实后重试")
+
+        # 4.校验通过修改消息is_deleted属性标记删除
+        self.update(message, is_deleted=True)
+
+        return message
+
+    def update_conversation(self, conversation_id: UUID, account: Account, **kwargs) -> Conversation:
+        """根据传递的会话id+账号+kwargs更新会话信息"""
+        # 1.获取会话记录并校验权限
+        conversation = self.get_conversation(conversation_id, account)
+
+        # 2.更新会话信息
+        self.update(conversation, **kwargs)
+
+        return conversation
