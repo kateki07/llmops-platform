@@ -38,12 +38,12 @@ class Provider(BaseModel):
         for model_type in provider_entity.supported_model_types:
             # 3.将类型的第一个字符转换成大写，其他不变，并构建类映射
             symbol_name = model_type[0].upper() + model_type[1:]
-            # 注意这里必须用 model_type.value，不能直接把枚举成员插进 f-string。
+            provider["model_class_map"][model_type] = dynamic_import(
+                # 注意这里必须用 model_type.value，不能直接把枚举成员插进 f-string。
             # ModelType 是 (str, Enum)，在 Python 3.10/3.11 下 f"{model_type}" 得到 "chat"，
             # 但 Python 3.12 改了 Enum.__format__ 的行为，同样的写法会得到 "ModelType.CHAT"，
             # 拼出来的模块路径就变成 ...providers.openai.ModelType.CHAT，动态导入直接失败。
-            provider["model_class_map"][model_type] = dynamic_import(
-                f"internal.core.language_model.providers.{provider_entity.name}.{model_type.value}",
+            f"internal.core.language_model.providers.{provider_entity.name}.{model_type.value}",
                 symbol_name
             )
 

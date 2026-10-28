@@ -1,12 +1,10 @@
 import logging
 import re
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from flask import Flask, current_app
 from injector import inject
 from langchain_core.documents import Document as LCDocument
 from redis import Redis
@@ -69,7 +67,7 @@ class IndexingService(BaseService):
                 self._completed(document, lc_segments)
 
             except Exception as e:
-                logging.exception(f"构建文档发生错误，错误信息：{str(e)}")
+                logging.exception("构建文档发生错误, 错误信息: %(error)s", {"error": e})
                 self.update(
                     document,
                     status=DocumentStatus.ERROR,
@@ -85,7 +83,7 @@ class IndexingService(BaseService):
         # 2.根据传递的document_id获取文档记录
         document = self.get(Document, document_id)
         if document is None:
-            logging.exception(f"当前文档不存在，文档id：{document_id}")
+            logging.exception("当前文档不存在, 文档id: %(document_id)s", {"document_id": document_id})
             raise NotFoundException("当前文档不存在")
 
         # 3.查询归属于当前文档的所有片段的节点id
@@ -128,7 +126,10 @@ class IndexingService(BaseService):
                 self.keyword_table_service.delete_keyword_table_from_ids(document.dataset_id, segment_ids)
         except Exception as e:
             # 5.记录日志并将状态修改回原来的状态
-            logging.exception(f"修改向量数据库文档启用状态失败，文档id：{document_id}，错误信息：{str(e)}")
+            logging.exception(
+                "修改向量数据库文档启用状态失败, document_id: %(document_id)s, 错误信息: %(error)s",
+                {"document_id": document_id, "error": e},
+            )
             origin_enabled = not document.enabled
             self.update(
                 document,
@@ -192,7 +193,10 @@ class IndexingService(BaseService):
                 where=Filter.by_property("dataset_id").equal(str(dataset_id))
             )
         except Exception as e:
-            logging.exception(f"异步删除知识库关联内容出错, dataset_id: {dataset_id}, 错误信息: {str(e)}")
+            logging.exception(
+                "异步删除知识库关联内容出错, dataset_id: %(dataset_id)s, 错误信息: %(error)s",
+                {"dataset_id": dataset_id, "error": e},
+            )
 
     def _parsing(self, document: Document) -> list[LCDocument]:
         """解析传递的文档为LangChain文档列表"""
@@ -216,66 +220,69 @@ class IndexingService(BaseService):
 
     def _splitting(self, document: Document, lc_documents: list[LCDocument]) -> list[LCDocument]:
         """根据传递的信息进行文档分割，拆分成小块片段"""
-        # 1.根据process_rule获取文本分割器
-        process_rule = document.process_rule
-        text_splitter = self.process_rule_service.get_text_splitter_by_process_rule(
-            process_rule,
-            self.embeddings_service.calculate_token_count,
-        )
-
-        # 2.按照process_rule规则清除多余的字符串
-        for lc_document in lc_documents:
-            lc_document.page_content = self.process_rule_service.clean_text_by_process_rule(
-                lc_document.page_content,
+        try:
+            # 1.根据process_rule获取文本分割器
+            process_rule = document.process_rule
+            text_splitter = self.process_rule_service.get_text_splitter_by_process_rule(
                 process_rule,
+                self.embeddings_service.calculate_token_count,
             )
 
-        # 3.分割文档列表为片段列表
-        lc_segments = text_splitter.split_documents(lc_documents)
+            # 2.按照process_rule规则清除多余的字符串
+            for lc_document in lc_documents:
+                lc_document.page_content = self.process_rule_service.clean_text_by_process_rule(
+                    lc_document.page_content,
+                    process_rule,
+                )
 
-        # 4.获取对应文档下得到最大片段位置
-        position = self.db.session.query(func.coalesce(func.max(Segment.position), 0)).filter(
-            Segment.document_id == document.id,
-        ).scalar()
+            # 3.分割文档列表为片段列表
+            lc_segments = text_splitter.split_documents(lc_documents)
 
-        # 5.循环处理片段数据并添加元数据，同时存储到postgres数据库中
-        segments = []
-        for lc_segment in lc_segments:
-            position += 1
-            content = lc_segment.page_content
-            segment = self.create(
-                Segment,
-                account_id=document.account_id,
-                dataset_id=document.dataset_id,
-                document_id=document.id,
-                node_id=uuid.uuid4(),
-                position=position,
-                content=content,
-                character_count=len(content),
-                token_count=self.embeddings_service.calculate_token_count(content),
-                hash=generate_text_hash(content),
-                status=SegmentStatus.WAITING,
+            # 4.获取对应文档下得到最大片段位置
+            position = self.db.session.query(func.coalesce(func.max(Segment.position), 0)).filter(
+                Segment.document_id == document.id,
+            ).scalar()
+
+            # 5.循环处理片段数据并添加元数据，同时存储到postgres数据库中
+            segments = []
+            for lc_segment in lc_segments:
+                position += 1
+                content = lc_segment.page_content
+                segment = self.create(
+                    Segment,
+                    account_id=document.account_id,
+                    dataset_id=document.dataset_id,
+                    document_id=document.id,
+                    node_id=uuid.uuid4(),
+                    position=position,
+                    content=content,
+                    character_count=len(content),
+                    token_count=self.embeddings_service.calculate_token_count(content),
+                    hash=generate_text_hash(content),
+                    status=SegmentStatus.WAITING,
+                )
+                lc_segment.metadata = {
+                    "account_id": str(document.account_id),
+                    "dataset_id": str(document.dataset_id),
+                    "document_id": str(document.id),
+                    "segment_id": str(segment.id),
+                    "node_id": str(segment.node_id),
+                    "document_enabled": False,
+                    "segment_enabled": False,
+                }
+                segments.append(segment)
+
+            # 6.更新文档的数据，涵盖状态、token数等内容
+            self.update(
+                document,
+                token_count=sum([segment.token_count for segment in segments]),
+                status=DocumentStatus.INDEXING,
+                splitting_completed_at=datetime.now(),
             )
-            lc_segment.metadata = {
-                "account_id": str(document.account_id),
-                "dataset_id": str(document.dataset_id),
-                "document_id": str(document.id),
-                "segment_id": str(segment.id),
-                "node_id": str(segment.node_id),
-                "document_enabled": False,
-                "segment_enabled": False,
-            }
-            segments.append(segment)
 
-        # 6.更新文档的数据，涵盖状态、token数等内容
-        self.update(
-            document,
-            token_count=sum([segment.token_count for segment in segments]),
-            status=DocumentStatus.INDEXING,
-            splitting_completed_at=datetime.now(),
-        )
-
-        return lc_segments
+            return lc_segments
+        except Exception as e:
+            print("_splitting出现异常:", e)
 
     def _indexing(self, document: Document, lc_segments: list[LCDocument]) -> None:
         """根据传递的信息构建索引，涵盖关键词提取、词表构建"""
@@ -294,6 +301,7 @@ class IndexingService(BaseService):
 
             # 3.获取当前知识库的关键词表
             keyword_table_record = self.keyword_table_service.get_keyword_table_from_dataset_id(document.dataset_id)
+
             keyword_table = {
                 field: set(value) for field, value in keyword_table_record.keyword_table.items()
             }
@@ -324,42 +332,34 @@ class IndexingService(BaseService):
             lc_segment.metadata["segment_enabled"] = True
 
         # 2.调用向量数据库，每次存储10条数据，避免一次传递过多的数据
-        def thread_func(flask_app: Flask, chunks: list[LCDocument], ids: list[UUID]) -> None:
-            """线程函数，执行向量数据库与postgres数据的存储"""
-            with flask_app.app_context():
-                try:
-                    self.vector_database_service.vector_store.add_documents(
-                        chunks, ids=ids,
-                    )
-                    with self.db.auto_commit():
-                        self.db.session.query(Segment).filter(
-                            Segment.node_id.in_(ids)
-                        ).update({
-                            "status": SegmentStatus.COMPLETED,
-                            "completed_at": datetime.now(),
-                            "enabled": True,
-                        })
-                except Exception as e:
-                    logging.exception(f"构建文档片段索引发生异常，错误信息： {str(e)}")
-                    with self.db.auto_commit():
-                        self.db.session.query(Segment).filter(
-                            Segment.node_id.in_(ids)
-                        ).update({
-                            "status": SegmentStatus.ERROR,
-                            "completed_at": None,
-                            "stopped_at": datetime.now(),
-                            "enabled": False,
-                        })
-
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = []
+        try:
             for i in range(0, len(lc_segments), 10):
                 chunks = lc_segments[i:i + 10]
                 ids = [chunk.metadata["node_id"] for chunk in chunks]
-                futures.append(executor.submit(thread_func, current_app._get_current_object(), chunks, ids))
-
-            for future in futures:
-                future.result()
+                self.vector_database_service.vector_store.add_documents(chunks, ids=ids)
+                with self.db.auto_commit():
+                    self.db.session.query(Segment).filter(
+                        Segment.node_id.in_(ids)
+                    ).update({
+                        "status": SegmentStatus.COMPLETED,
+                        "completed_at": datetime.now(),
+                        "enabled": True,
+                    })
+        except Exception as e:
+            logging.exception(
+                "构建文档片段索引发生异常, 错误信息: %(error)s",
+                {"error": e},
+            )
+            with self.db.auto_commit():
+                self.db.session.query(Segment).filter(
+                    Segment.node_id.in_(ids)
+                ).update({
+                    "status": SegmentStatus.ERROR,
+                    "completed_at": None,
+                    "stopped_at": datetime.now(),
+                    "enabled": False,
+                    "error": str(e),
+                })
 
         # 6.更新文档的状态数据
         self.update(

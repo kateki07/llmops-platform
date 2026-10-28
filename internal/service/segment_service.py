@@ -133,7 +133,10 @@ class SegmentService(BaseService):
                 self.keyword_table_service.add_keyword_table_from_ids(dataset_id, [segment.id])
 
         except Exception as e:
-            logging.exception(f"新增文档片段内容发生异常, 错误信息: {str(e)}")
+            logging.exception(
+                "构建文档片段索引发生异常, 错误信息: %(error)s",
+                {"error": e},
+            )
             if segment:
                 self.update(
                     segment,
@@ -209,7 +212,10 @@ class SegmentService(BaseService):
                     vector=self.embeddings_service.embeddings.embed_query(req.content.data)
                 )
         except Exception as e:
-            logging.exception(f"更新文档片段记录失败, segment_id: {segment}, 错误信息: {str(e)}")
+            logging.exception(
+                "更新文档片段记录失败, segment_id: %(segment_id)s, 错误信息: %(error)s",
+                {"segment_id": segment_id, "error": e},
+            )
             raise FailException("更新文档片段记录失败，请稍后尝试")
 
         return segment
@@ -303,7 +309,10 @@ class SegmentService(BaseService):
                     properties={"segment_enabled": enabled}
                 )
             except Exception as e:
-                logging.exception(f"更改文档片段启用状态出现异常, segment_id: {segment_id}, 错误信息: {str(e)}")
+                logging.exception(
+                    "更改文档片段启用状态出现异常, segment_id: %(segment_id)s, 错误信息: %(error)s",
+                    {"segment_id": segment_id, "error": e},
+                )
                 self.update(
                     segment,
                     error=str(e),
@@ -341,7 +350,10 @@ class SegmentService(BaseService):
         try:
             self.vector_database_service.collection.data.delete_by_id(str(segment.node_id))
         except Exception as e:
-            logging.exception(f"删除文档片段记录失败, segment_id: {segment_id}, 错误信息: {str(e)}")
+            logging.exception(
+                "删除文档片段记录失败, segment_id: %(segment_id)s, 错误信息: %(error)s",
+                {"segment_id": segment_id, "error": e},
+            )
 
         # 6.更新文档信息，涵盖字符总数、token总次数
         document_character_count, document_token_count = self.db.session.query(

@@ -27,7 +27,10 @@ class Middleware:
             # 3.解析token信息得到用户信息并返回
             payload = self.jwt_service.parse_token(access_token)
             account_id = payload.get("sub")
-            return self.account_service.get_account(account_id)
+            account = self.account_service.get_account(account_id)
+            if not account:
+                raise UnauthorizedException("当前账户不存在，请重新登录")
+            return account
         elif request.blueprint == "openapi":
             # 4.校验获取api_key
             api_key = self._validate_credential(request)

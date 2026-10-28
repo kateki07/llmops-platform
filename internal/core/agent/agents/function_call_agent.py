@@ -18,9 +18,9 @@ from internal.core.agent.entities.agent_entity import (
     MAX_ITERATION_RESPONSE,
 )
 from internal.core.agent.entities.queue_entity import AgentThought, QueueEvent
+from internal.core.language_model.entities.model_entity import ModelFeature
 from internal.exception import FailException
 from .base_agent import BaseAgent
-from ...language_model.entities.model_entity import ModelFeature
 
 
 class FunctionCallAgent(BaseAgent):
@@ -107,7 +107,8 @@ class FunctionCallAgent(BaseAgent):
             if len(history) % 2 != 0:
                 self.agent_queue_manager.publish_error(state["task_id"], "智能体历史消息列表格式错误")
                 logging.exception(
-                    f"智能体历史消息列表格式错误, len(history)={len(history)}, history={json.dumps(messages_to_dict(history))}"
+                    "智能体历史消息列表格式错误, len(history)=%(len_history)d, history=%(history)s",
+                    {"len_history": len(history), "history": json.dumps(messages_to_dict(history))},
                 )
                 raise FailException("智能体历史消息列表格式错误")
             # 5.拼接历史消息
@@ -198,7 +199,10 @@ class FunctionCallAgent(BaseAgent):
                         latency=(time.perf_counter() - start_at),
                     ))
         except Exception as e:
-            logging.exception(f"LLM节点发生错误, 错误信息: {str(e) or 'LLM出现未知错误'}")
+            logging.exception(
+                "LLM节点发生错误, 错误信息: %(error)s",
+                {"error": str(e) or "LLM出现未知错误"}
+            )
             self.agent_queue_manager.publish_error(
                 state["task_id"],
                 f"LLM节点发生错误, 错误信息: {str(e) or 'LLM出现未知错误'}",

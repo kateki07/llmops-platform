@@ -74,3 +74,17 @@ langchain-ollama==0.1.3     # Ollama 本地模型（通义/文心走 langchain-c
 # 之前 pytest 只装在虚拟环境里、没写进这里，别人 clone 下来按 requirements
 # 装完是跑不了测试的。
 pytest==9.1.1
+
+# --- 第15周 向量库插件化与生产部署：主线必须 ---
+# flask-weaviate 把手写的 weaviate 客户端换成 Flask 扩展，由它管理连接生命周期。
+# 注意它会把 httpx 钉在 0.27.0（weaviate-client 4.6.5 的硬性要求），
+# 所以 unstructured-client 也得退回 0.29.0，否则两边的 httpx 要求打架。
+flask-weaviate==1.1.0
+unstructured-client==0.29.0
+
+# 多进程写同一个日志文件会互相截断，换成带文件锁的 handler（老师的 bug_report 里有记录）
+concurrent-log-handler==0.9.25
+pywin32>=226; platform_system == "Windows"   # concurrent-log-handler 在 Windows 下的子依赖
+
+# 生产环境的 WSGI 服务器。Flask 自带的开发服务器单线程、不能用于生产
+gunicorn==23.0.0

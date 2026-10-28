@@ -18,3 +18,7 @@ internal/core/embeddings/models--*/
 
 # pytest 缓存（pytest.ini 里把 cache_dir 指到了这里）
 tmp/
+
+# NLTK 数据：第三方模型数据，不进仓库（约 58MB、39 个 pickle）。
+# 用 scripts/download_nltk_data.py 下载，Docker 构建时会自动执行。
+internal/core/unstructured/nltk_data/

@@ -12,13 +12,13 @@ from internal.core.tools.api_tools.entities import ToolEntity
 from internal.core.tools.api_tools.providers import ApiProviderManager
 from internal.core.tools.builtin_tools.providers import BuiltinProviderManager
 from internal.core.workflow import Workflow as WorkflowTool
+from internal.core.workflow.entities.workflow_entity import WorkflowConfig
 from internal.entity.app_entity import DEFAULT_APP_CONFIG
 from internal.entity.workflow_entity import WorkflowStatus
 from internal.lib.helper import datetime_to_timestamp, get_value_type
 from internal.model import App, ApiTool, Dataset, AppConfig, AppConfigVersion, AppDatasetJoin, Workflow
 from pkg.sqlalchemy import SQLAlchemy
 from .base_service import BaseService
-from ..core.workflow.entities.workflow_entity import WorkflowConfig
 
 
 @inject

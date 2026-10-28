@@ -1,6 +1,5 @@
 import json
 from dataclasses import dataclass
-from threading import Thread
 from typing import Generator
 
 from flask import current_app
@@ -10,6 +9,7 @@ from langchain_core.messages import HumanMessage
 from internal.core.agent.agents import FunctionCallAgent, ReACTAgent
 from internal.core.agent.entities.agent_entity import AgentConfig
 from internal.core.agent.entities.queue_entity import QueueEvent
+from internal.core.language_model.entities.model_entity import ModelFeature
 from internal.core.memory import TokenBufferMemory
 from internal.entity.app_entity import AppStatus
 from internal.entity.conversation_entity import InvokeFrom, MessageStatus
@@ -25,7 +25,6 @@ from .base_service import BaseService
 from .conversation_service import ConversationService
 from .language_model_service import LanguageModelService
 from .retrieval_service import RetrievalService
-from ..core.language_model.entities.model_entity import ModelFeature
 
 
 @inject
@@ -193,19 +192,14 @@ class OpenAPIService(BaseService):
                     yield f"event: {agent_thought.event.value}\ndata:{json.dumps(data)}\n\n"
 
                 # 22.将消息以及推理过程添加到数据库
-                thread = Thread(
-                    target=self.conversation_service.save_agent_thoughts,
-                    kwargs={
-                        "flask_app": current_app._get_current_object(),
-                        "account_id": account.id,
-                        "app_id": app.id,
-                        "app_config": app_config,
-                        "conversation_id": conversation.id,
-                        "message_id": message.id,
-                        "agent_thoughts": [agent_thought for agent_thought in agent_thoughts_dict.values()],
-                    }
+                self.conversation_service.save_agent_thoughts(
+                    account_id=account.id,
+                    app_id=app.id,
+                    app_config=app_config,
+                    conversation_id=conversation.id,
+                    message_id=message.id,
+                    agent_thoughts=[agent_thought for agent_thought in agent_thoughts_dict.values()],
                 )
-                thread.start()
 
             return handle_stream()
 
@@ -213,19 +207,14 @@ class OpenAPIService(BaseService):
         agent_result = agent.invoke(agent_state)
 
         # 18.将消息以及推理过程添加到数据库
-        thread = Thread(
-            target=self.conversation_service.save_agent_thoughts,
-            kwargs={
-                "flask_app": current_app._get_current_object(),
-                "account_id": account.id,
-                "app_id": app.id,
-                "app_config": app_config,
-                "conversation_id": conversation.id,
-                "message_id": message.id,
-                "agent_thoughts": agent_result.agent_thoughts,
-            }
+        self.conversation_service.save_agent_thoughts(
+            account_id=account.id,
+            app_id=app.id,
+            app_config=app_config,
+            conversation_id=conversation.id,
+            message_id=message.id,
+            agent_thoughts=agent_result.agent_thoughts,
         )
-        thread.start()
 
         return Response(data={
             "id": str(message.id),

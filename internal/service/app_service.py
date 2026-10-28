@@ -2,7 +2,6 @@ import io
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from threading import Thread
 from typing import Any, Generator
 from uuid import UUID
 
@@ -17,12 +16,14 @@ from langchain_core.runnables import RunnableParallel
 from langchain_openai import ChatOpenAI
 from redis import Redis
 from sqlalchemy import func, desc
+from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
 
 from internal.core.agent.agents import FunctionCallAgent, AgentQueueManager, ReACTAgent
 from internal.core.agent.entities.agent_entity import AgentConfig
 from internal.core.agent.entities.queue_entity import QueueEvent
 from internal.core.language_model import LanguageModelManager
+from internal.core.language_model.entities.model_entity import ModelParameterType, ModelFeature
 from internal.core.memory import TokenBufferMemory
 from internal.core.tools.api_tools.providers import ApiProviderManager
 from internal.core.tools.builtin_tools.providers import BuiltinProviderManager
@@ -31,6 +32,7 @@ from internal.entity.app_entity import AppStatus, AppConfigType, DEFAULT_APP_CON
 from internal.entity.app_entity import GENERATE_ICON_PROMPT_TEMPLATE
 from internal.entity.conversation_entity import InvokeFrom, MessageStatus
 from internal.entity.dataset_entity import RetrievalSource
+from internal.entity.workflow_entity import WorkflowStatus
 from internal.exception import NotFoundException, ForbiddenException, ValidateErrorException, FailException
 from internal.lib.helper import remove_fields, get_value_type, generate_random_string
 from internal.model import (
@@ -42,7 +44,8 @@ from internal.model import (
     AppConfig,
     AppDatasetJoin,
     Conversation,
-    Message, Workflow,
+    Message,
+    Workflow,
 )
 from internal.schema.app_schema import (
     CreateAppReq,
@@ -58,8 +61,6 @@ from .conversation_service import ConversationService
 from .cos_service import CosService
 from .language_model_service import LanguageModelService
 from .retrieval_service import RetrievalService
-from ..core.language_model.entities.model_entity import ModelParameterType, ModelFeature
-from ..entity.workflow_entity import WorkflowStatus
 
 
 @inject
@@ -285,8 +286,6 @@ class AppService(BaseService):
         draft_app_config_record = app.draft_app_config
         self.update(
             draft_app_config_record,
-            # todo:由于目前使用server_onupdate，所以该字段暂时需要手动传递
-            updated_at=datetime.now(),
             **draft_app_config,
         )
 
@@ -433,8 +432,6 @@ class AppService(BaseService):
         draft_app_config_record = app.draft_app_config
         self.update(
             draft_app_config_record,
-            # todo:更新时间补丁信息
-            updated_at=datetime.now(),
             **draft_app_config_dict,
         )
 
@@ -609,21 +606,14 @@ class AppService(BaseService):
             yield f"event: {agent_thought.event.value}\ndata:{json.dumps(data)}\n\n"
 
         # 22.将消息以及推理过程添加到数据库
-        # todo:将数据库数据存储/更新的操作转换为同步，将summary和conversation_name生成放置到Thread执行
-        # todo:考虑将错误信息/超时信息也一并存储到answer中，这个需求可以根据不同的业务逻辑做相应的抉择
-        thread = Thread(
-            target=self.conversation_service.save_agent_thoughts,
-            kwargs={
-                "flask_app": current_app._get_current_object(),
-                "account_id": account.id,
-                "app_id": app_id,
-                "app_config": draft_app_config,
-                "conversation_id": debug_conversation.id,
-                "message_id": message.id,
-                "agent_thoughts": [agent_thought for agent_thought in agent_thoughts.values()],
-            }
+        self.conversation_service.save_agent_thoughts(
+            account_id=account.id,
+            app_id=app.id,
+            app_config=draft_app_config,
+            conversation_id=debug_conversation.id,
+            message_id=message.id,
+            agent_thoughts=[agent_thought for agent_thought in agent_thoughts.values()],
         )
-        thread.start()
 
     def stop_debug_chat(self, app_id: UUID, task_id: UUID, account: Account) -> None:
         """根据传递的应用id+任务id+账号，停止某个应用的调试会话，中断流式事件"""
@@ -656,7 +646,7 @@ class AppService(BaseService):
 
         # 5.执行分页并查询数据
         messages = paginator.paginate(
-            self.db.session.query(Message).filter(
+            self.db.session.query(Message).options(joinedload(Message.agent_thoughts)).filter(
                 Message.conversation_id == debug_conversation.id,
                 Message.status.in_([MessageStatus.STOP, MessageStatus.NORMAL]),
                 Message.answer != "",

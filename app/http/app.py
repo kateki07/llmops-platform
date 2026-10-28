@@ -1,6 +1,7 @@
 import dotenv
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_weaviate import FlaskWeaviate
 
 from config import Config
 from internal.middleware import Middleware
@@ -19,6 +20,7 @@ app = Http(
     __name__,
     conf=conf,
     db=injector.get(SQLAlchemy),
+    weaviate=injector.get(FlaskWeaviate),
     migrate=injector.get(Migrate),
     login_manager=injector.get(LoginManager),
     middleware=injector.get(Middleware),
