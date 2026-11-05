@@ -4,7 +4,6 @@ from typing import Generator
 
 from flask import current_app
 from injector import inject
-from langchain_core.messages import HumanMessage
 
 from internal.core.agent.agents import FunctionCallAgent, ReACTAgent
 from internal.core.agent.entities.agent_entity import AgentConfig
@@ -88,6 +87,7 @@ class OpenAPIService(BaseService):
             "invoke_from": InvokeFrom.SERVICE_API,
             "created_by": end_user.id,
             "query": req.query.data,
+            "image_urls": req.image_urls.data,
             "status": MessageStatus.NORMAL,
         })
 
@@ -142,7 +142,7 @@ class OpenAPIService(BaseService):
 
         # 15.定义智能体状态基础数据
         agent_state = {
-            "messages": [HumanMessage(req.query.data)],
+            "messages": [llm.convert_to_human_message(req.query.data, req.image_urls.data)],
             "history": history,
             "long_term_memory": conversation.summary,
         }
@@ -184,11 +184,7 @@ class OpenAPIService(BaseService):
                         "message_id": str(message.id),
                         "task_id": str(agent_thought.task_id),
                     }
-                    # 这里必须用 .value。QueueEvent 是 (str, Enum)，而 Python 3.12 改了 Enum.__format__：
-                    # 同一行 f"{agent_thought.event}" 在 3.10/3.11 得到 "agent_message"，
-                    # 在 3.12 得到 "QueueEvent.AGENT_MESSAGE"。前端比较的是 "agent_message"，
-                    # 对不上就会让每个 token 都走进「其他事件」分支，answer 永远是空串，
-                    # 表现为气泡一直空着、等整段生成完才从数据库读回来 —— 打字机效果整个失效。
+                    # 同理必须用 .value，原因见 app_service.py 里的说明。
                     yield f"event: {agent_thought.event.value}\ndata:{json.dumps(data)}\n\n"
 
                 # 22.将消息以及推理过程添加到数据库
@@ -221,6 +217,7 @@ class OpenAPIService(BaseService):
             "end_user_id": str(end_user.id),
             "conversation_id": str(conversation.id),
             "query": req.query.data,
+            "image_urls": req.image_urls.data,
             "answer": agent_result.answer,
             "total_token_count": 0,
             "latency": agent_result.latency,

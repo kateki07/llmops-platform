@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import os
 from dataclasses import dataclass
@@ -5,7 +6,6 @@ from typing import Any
 
 from flask import current_app
 from injector import inject
-from langchain_openai import ChatOpenAI
 
 from internal.core.language_model import LanguageModelManager
 from internal.core.language_model.entities.model_entity import BaseLanguageModel
@@ -115,10 +115,28 @@ class LanguageModelService(BaseService):
                 features=model_entity.features,
                 metadata=model_entity.metadata,
             )
-        except Exception as _:
+        except Exception as error:
+            # 占位符是 %(name)s，不是 $(name)s。写错不会报错，只会把
+            # 字面量 "$(error)s" 打进日志，真正的错误信息反而丢了 ——
+            # 而这里恰恰是「模型加载失败、走兜底模型」的唯一线索。
+            logging.error("获取模型失败, 错误信息: %(error)s", {"error": error}, exc_info=True)
             return self.load_default_language_model()
 
-    @classmethod
-    def load_default_language_model(cls) -> BaseLanguageModel:
+    def load_default_language_model(self) -> BaseLanguageModel:
         """加载默认的大语言模型，在模型管理器中获取不到模型或者出错时使用默认模型进行兜底"""
-        return ChatOpenAI(model="gpt-4o-mini", temperature=1, max_tokens=8192)
+        # 1.获取openai服务提供者与模型类
+        provider = self.language_model_manager.get_provider("openai")
+        model_entity = provider.get_model_entity("gpt-4o-mini")
+        model_class = provider.get_model_class(model_entity.model_type)
+
+        # bug:原先写法使用的是LangChain封装的LLM类，需要替换成自定义封装的类，否则会识别到模型不存在features
+        # return ChatOpenAI(model="gpt-4o-mini", temperature=1, max_tokens=8192)
+
+        # 2.实例化模型并返回
+        return model_class(
+            **model_entity.attributes,
+            temperature=1,
+            max_tokens=8192,
+            features=model_entity.features,
+            metadata=model_entity.metadata,
+        )

@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from langchain_core.language_models import BaseLanguageModel as LCBaseLanguageModel
+from langchain_core.messages import HumanMessage
 from langchain_core.pydantic_v1 import BaseModel, Field
 
 
@@ -74,6 +75,28 @@ class BaseLanguageModel(LCBaseLanguageModel, ABC):
     features: list[ModelFeature] = Field(default_factory=list)  # 模型特性
     metadata: dict[str, Any] = Field(default_factory=dict)  # 模型元数据信息
 
+    def get_token_ids(self, text: str) -> list[int]:
+        """把文本切成 token id 列表，用于估算上下文长度。
+
+        为什么要在这里重写：LangChain 的默认实现会去 HuggingFace 下载 GPT-2 词表
+        （GPT2TokenizerFast.from_pretrained("gpt2")），于是
+          - 要多装一个 transformers 依赖；
+          - 第一次用到时要联网，生产环境容器里网络不通就直接 OSError。
+        课程里的解决办法是设置 HF_ENDPOINT 指向国内镜像，但那只是换个下载地址，
+        仍然依赖运行时联网。
+
+        这里改成用 tiktoken 的 cl100k_base 本地编码：不联网、不加依赖。
+        注意这只影响「自己没有实现 get_token_ids」的那几个模型
+        （ollama / tongyi / wenxin）——OpenAI、月之暗面、DeepSeek 都继承自
+        langchain-openai，自带按各自词表计数的实现，MRO 上排在本类前面，不受影响。
+
+        token 数在这里只用来裁剪历史消息，估算值足够；真正计费用的 token 数
+        取的是 LLM 返回的 usage，不走这里。
+        """
+        import tiktoken
+
+        return tiktoken.get_encoding("cl100k_base").encode(text)
+
     def get_pricing(self) -> tuple[float, float, float]:
         """获取LLM对应的价格信息，返回数据格式为(输入价格, 输出价格, 单位)"""
         # 1.计算获取输入价格、输出价格、单位
@@ -83,3 +106,16 @@ class BaseLanguageModel(LCBaseLanguageModel, ABC):
 
         # 2.返回数据
         return input_price, output_price, unit
+
+    def convert_to_human_message(self, query: str, image_urls: list[str] = None) -> HumanMessage:
+        """将传递的query+image_url转换成人类消息HumanMessage，如果没有传递image_url或者该LLM不支持image_input，则直接返回普通人类消息"""
+        # 1.判断图片url是否为空，或者该LLM不支持图片输入，则直接返回普通消息
+        if image_urls is None or len(image_urls) == 0 or ModelFeature.IMAGE_INPUT not in self.features:
+            return HumanMessage(content=query)
+
+        # 2.存在图片输入并且支持多模态输入，则按照OpenAI规则转换成人类消息，如果模型有差异则直接继承重写
+        #   链接: https://python.langchain.com/docs/how_to/multimodal_inputs/
+        return HumanMessage(content=[
+            {"type": "text", "text": query},
+            *[{"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls],
+        ])

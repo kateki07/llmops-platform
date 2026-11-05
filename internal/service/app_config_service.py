@@ -1,8 +1,8 @@
+import os
 from dataclasses import dataclass
 from typing import Any, Union
 from uuid import UUID
 
-from flask import request
 from injector import inject
 from langchain_core.tools import BaseTool
 
@@ -241,7 +241,11 @@ class AppConfigService(BaseService):
                         "id": provider_entity.name,
                         "name": provider_entity.name,
                         "label": provider_entity.label,
-                        "icon": f"{request.scheme}://{request.host}/builtin-tools/{provider_entity.name}/icon",
+                        # 课程代码写死成 "/api/..."，那是生产环境 nginx 把 UI 和 API
+                        # 合到同一域名下才成立的前提。本地开发时前端在 5173、后端在 5000，
+                        # "/api/..." 会打到 Vite 开发服务器上，图标全部 404。
+                        # 改成读环境变量：开发填 http://localhost:5000，生产填 https://域名/api。
+                        "icon": f"{os.getenv('SERVICE_API_PREFIX', '')}/builtin-tools/{provider_entity.name}/icon",
                         "description": provider_entity.description,
                     },
                     "tool": {

@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -188,7 +187,7 @@ class AppHandler:
             return validate_error_json(req.errors)
 
         # 2.调用服务发起会话调试
-        response = self.app_service.debug_chat(app_id, req.query.data, current_user)
+        response = self.app_service.debug_chat(app_id, req, current_user)
 
         return compact_generate_response(response)
 
@@ -230,7 +229,7 @@ class AppHandler:
         """健康检查接口。启动脚本（启动开发环境.ps1）靠它判断后端是否就绪，
         所以这里必须保持免鉴权、且不依赖任何外部服务（数据库/LLM 都不碰）。
 
-        注意：老师的课程代码里会反复把这个接口改成调试大模型用的草稿
+        注意：老师的课程代码里会反复把这个接口改成调试用的草稿
         （每周覆盖 app_handler.py 都会带回来），合并代码后记得改回来。
         """
         return success_json({"ping": "pong"})

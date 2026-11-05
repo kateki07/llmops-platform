@@ -88,3 +88,8 @@ pywin32>=226; platform_system == "Windows"   # concurrent-log-handler 在 Window
 
 # 生产环境的 WSGI 服务器。Flask 自带的开发服务器单线程、不能用于生产
 gunicorn==23.0.0
+
+# --- 第16周 多模态与第三方平台：主线必须 ---
+# 微信公众号 SDK：负责 XML 报文解析、签名校验、回复报文拼装。
+# 它自带 optionaldict / xmltodict / six 等子依赖，装它就够。
+wechatpy==1.8.18

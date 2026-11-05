@@ -82,6 +82,7 @@ class Message(db.Model):
 
     # 消息关联的原始问题
     query = Column(Text, nullable=False, server_default=text("''::text"))  # 用户提问的原始query
+    image_urls = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))  # 用户提问的图片URL列表信息
     message = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))  # 产生answer的消息列表
     message_token_count = Column(Integer, nullable=False, server_default=text("0"))  # 消息列表的token总数
     message_unit_price = Column(Numeric(10, 7), nullable=False, server_default=text("0.0"))  # 消息的单价
@@ -120,6 +121,13 @@ class Message(db.Model):
         foreign_keys=[id],
         primaryjoin="MessageAgentThought.message_id == Message.id",
     )
+
+    @property
+    def conversation(self) -> Conversation:
+        """只读属性，返回该消息对应的会话记录"""
+        # SQLAlchemy 2.x 里 Query.get() 是遗留 API（会发 LegacyAPIWarning），
+        # 等价写法是 Session.get()。
+        return db.session.get(Conversation, self.conversation_id)
 
 
 class MessageAgentThought(db.Model):
